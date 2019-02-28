@@ -104,6 +104,9 @@ for trial_id in to_parse:
 if int(sys.argv[5])==1:
     df.to_csv(filename+".csv",index=False)
     os.remove(DIREC+"/param_grid.pkl")
-    os.remove(filename+".pkl")
+    try:
+        os.remove(filename+".pkl")
+    except OSError:     # only aggregated once
+        pass
 else:
     df.to_pickle(filename+".pkl")
