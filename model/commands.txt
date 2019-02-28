@@ -1,0 +1,15 @@
+solve;
+display profit;
+display capacity;
+display privCap;
+display demand;
+display gamma;
+display price;
+display quant;
+display U;
+display a;
+display b;
+display c;
+display governmentCost;
+display gamma;
+display objCost;
