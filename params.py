@@ -36,24 +36,20 @@ except OSError:     # directory exists
 
 #---------------------------- GLOBAL TRIAL INPUTS (maxes are inclusive)
 
-DEM = [4 *MIL , 5 *MIL]                   # total annual US demand
-DEM_INT = 1 *MIL                          # demand interval
+DEM = [4 *MIL , 8 *MIL]                # total annual US demand
+DEM_INT = 0.5 *MIL                     # demand interval
 
-GAM = [2 *DEC, 3 *DEC]                    # product similarity in [0,1], where 1=identical
-GAM_INT = 1 *DEC
+GAM = [1 *DEC, 5 *DEC]                 # product similarity in [0,1], where 1=identical
+GAM_INT = 0.5 *DEC
 
-M1_CAP = [3 *MIL , 4 *MIL]                # production capacity min, max
-M2_CAP = [3 *MIL , 4 *MIL]
-M1_CAP_INT = 1 * MIL                      # production capacity interval
-M2_CAP_INT = 1 * MIL
+CAP = [3 *MIL , 6 *MIL]                # production capacity min, max
+CAP_INT = 1 * MIL                      # production capacity interval
 
-M1_PROF = [1 *MIL , 3 *MIL]               # target profit min, max
-M2_PROF = [1 *MIL , 3 *MIL]
-M1_PROF_INT = 2 *MIL                      # target profit interval
-M2_PROF_INT = 2 *MIL
+PROF = [30 *MIL , 50 *MIL]             # target profit min, max
+PROF_INT = 5 *MIL                      # target profit interval
 
-OBJ_GOVT = [5 *(1/MIL), 5 *(1/MIL)]       # objective function weight for gov't cost
-OBJ_GOVT_INT = 1 *(1/MIL)                 # gov't cost weight interval
+OBJ_GOVT = [5 *(1/MIL), 5 *(1/MIL)]    # objective function weight for gov't cost
+OBJ_GOVT_INT = 1 *(1/MIL)              # gov't cost weight interval
 
 
 #---------------------------- CREATE PARAMETER GRID
@@ -61,10 +57,10 @@ OBJ_GOVT_INT = 1 *(1/MIL)                 # gov't cost weight interval
 # populate
 grid = np.array(
     [(K1,K2,P1,P2,D,G,OG)
-       for K1 in np.arange(M1_CAP[0],M1_CAP[1]+M1_CAP_INT,M1_CAP_INT)
-       for K2 in np.arange(M2_CAP[0],M2_CAP[1]+M2_CAP_INT,M2_CAP_INT)
-       for P1 in np.arange(M1_PROF[0],M1_PROF[1]+M1_PROF_INT,M1_PROF_INT)
-       for P2 in np.arange(M2_PROF[0],M2_PROF[1]+M2_PROF_INT,M2_PROF_INT)
+       for K1 in np.arange(CAP[0],CAP[1]+CAP_INT,CAP_INT)
+       for K2 in np.arange(CAP[0],K1+CAP_INT,CAP_INT)         # lower triangle
+       for P1 in np.arange(PROF[0],PROF[1]+PROF_INT,PROF_INT)
+       for P2 in np.arange(PROF[0],P1+PROF_INT,PROF_INT)      # lower triangle
        for D in np.arange(DEM[0],DEM[1]+DEM_INT,DEM_INT)
        for G in np.arange(GAM[0],GAM[1]+GAM_INT,GAM_INT)
        for OG in np.arange(OBJ_GOVT[0],OBJ_GOVT[1]+OBJ_GOVT_INT,OBJ_GOVT_INT)

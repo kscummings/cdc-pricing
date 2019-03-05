@@ -1,7 +1,7 @@
 # See readme for instructions
 
 
-N=100               # batch size. recommended: 100-300
+N=200               # batch size. recommended: 100-200
 DIREC="temp_test"   # directory for all outputs
 
 NUM_TRIALS=$(python3 params.py $DIREC)
