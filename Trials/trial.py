@@ -18,10 +18,11 @@ import os
 #------------------------------CONSTANTS
 
 DIREC = sys.argv[3]
-MODEL_FILE = "model/model.mod"
-COMMAND_FILE = "model/commands.txt"
+MODEL_FILE = "../model/model.mod"
+COMMAND_FILE = "../model/commands.txt"
 NEOS_HOST="neos-server.org"
 NEOS_PORT=3333
+
 
 
 #------------------------------GET TRIAL
@@ -50,6 +51,7 @@ all_text.append("param: capacity := \n x "+trial['m1_cap']+"\n y "+trial['m2_cap
 all_text.append("param demand := "+trial['dem']+"; \n")         # market params
 all_text.append("param gamma := "+trial['prod_sim']+"; \n")
 all_text.append("param objCost = "+trial['obj_govt']+"; \n")    # objective function weight
+all_text.append("param inflationPrice := x "+trial['m1_infl']+"\n y "+trial['m2_infl']+"; \n")
 
 gamma = float(trial['prod_sim'])                                # linear demand curves
 a = [1396000+1526143/(1+gamma), 1053000+2361286/(1+gamma)]      # pub, priv

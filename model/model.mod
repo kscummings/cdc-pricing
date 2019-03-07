@@ -25,6 +25,7 @@ param U =					                  # cutoff for BC equilibrium
      a[last(Sectors)]*(1+gamma)/gamma * (1-2*(1-gamma)^(1/2)/((1+gamma)^(1/2)*(2-gamma)));
 
 param objCost >= 0;           # objective function weight for govt cost
+param inflationPrice{Manufacturers} >=0;
 
 # --- OBJECTIVE FUNCTION ---
 
@@ -80,3 +81,7 @@ minimize governmentCostAndPriceDifference:
 
   lastLarger:
   price[first(Sectors),first(Manufacturers)]-price[first(Sectors),last(Manufacturers)] <= z;
+
+## Bound prices by inflation price
+  inflation{m in Manufacturers}:
+  price[first(Sectors),m] <= inflationPrice[m];
