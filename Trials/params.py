@@ -24,7 +24,7 @@ import fileinput
 import itertools
 
 MIL = 10**6
-HMIL = 10**5
+TH = 10**3
 DEC = 10**-1
 OBJ = 10**-4
 
@@ -38,60 +38,68 @@ except OSError:     # directory exists
 
 #---------------------------- GLOBAL TRIAL INPUTS (maxes are inclusive)
 
-# DEM = [4 *MIL , 8 *MIL]                # total annual US demand
-# DEM_INT = 0.5 *MIL                     # demand interval
-#
-# GAM = [1 *DEC, 5 *DEC]                 # product similarity in [0,1], where 1=identical
-# GAM_INT = 0.5 *DEC
-#
-# CAP = [3 *MIL , 6 *MIL]                # production capacity min, max
-# CAP_INT = 1 * MIL                      # production capacity interval
-#
-# PROF = [30 *MIL , 50 *MIL]             # target profit min, max
-# PROF_INT = 5 *MIL                      # target profit interval
-#
-# OBJ_GOVT = [OBJ, OBJ]                  # objective function weight for gov't cost
-# OBJ_GOVT_INT = OBJ                     # gov't cost weight interval
-#
-# M1_INFLATION = [17.25]                # inflation price upper bound
-# M2_INFLATION = [17.13] # DAPTACEL
+DEM = [7.032 *MIL , 7.032 *MIL]                # total annual US demand
+DEM_INT = 38.3 *MIL                                # demand interval
 
-DEM = [4 *MIL , 5 *MIL]                # total annual US demand
-DEM_INT = 1 *MIL                     # demand interval
+GAM = [0.25, 0.25]                               # product similarity in [0,1], where 1=identical
+GAM_INT = 1
 
-GAM = [1 *DEC, 3 *DEC]                 # product similarity in [0,1], where 1=identical
-GAM_INT = 0.2 *DEC
+M1_CAP = [7.032 *MIL, 7.032 *MIL] #GSK              # production capacity min, max
+M1_CAP_INT = 23480                                 # production capacity interval
+M2_CAP = [7.032 *MIL, 7.032 *MIL] #SP
+M2_CAP_INT = 23480
 
-CAP = [3 *MIL , 4 *MIL]                # production capacity min, max
-CAP_INT = 1 * MIL                      # production capacity interval
-
-PROF = [30 *MIL , 40 *MIL]             # target profit min, max
-PROF_INT = 10 *MIL                      # target profit interval
+M1_PROF = [58.5 *MIL, 58.5 *MIL] #GSK              # target profit min, max
+M1_PROF_INT = 265 *TH                              # target profit interval
+M2_PROF = [59.7 *MIL, 59.7 *MIL] #SP
+M2_PROF_INT = 428 *MIL
 
 OBJ_GOVT = [OBJ, OBJ]                  # objective function weight for gov't cost
 OBJ_GOVT_INT = OBJ                     # gov't cost weight interval
 
-M1_INFLATION = [17.25]                # inflation price upper bound
-M2_INFLATION = [17.13] # DAPTACEL
+M1_INFLATION = [500] #GSK 11.88                    # inflation price upper bound
+M2_INFLATION = [500] #SP 12.59
+
+
 
 #---------------------------- CREATE PARAMETER GRID
 
-# generate unique pairs of manufacturers
-manuf=[(K,P) for K in np.arange(CAP[0],CAP[1]+CAP_INT,CAP_INT)
-          for P in np.arange(PROF[0],PROF[1]+PROF_INT,PROF_INT)]
-valid_trials=[(i,j) for i in np.arange(len(manuf))
-                    for j in np.arange(i+1)]
-x=[(manuf[id[0]],manuf[id[1]]) for id in valid_trials]
-x=np.array([list(itertools.chain(*x[i])) for i in np.arange(len(x))]) #squash
+########## generate unique pairs of manufacturers
+# ########## uncomment if capacities and profits are the same
+# CAP = [4.034 *MIL , 4.034 *MIL]                # production capacity min, max
+# CAP_INT = 100 *MIL                      # production capacity interval
+#
+# PROF = [26.5 *MIL , 53 *MIL]             # target profit min, max
+# PROF_INT = 530 *TH                      # target profit interval
+#
+# manuf=[(K,P) for K in np.arange(CAP[0],CAP[1]+CAP_INT,CAP_INT)
+#           for P in np.arange(PROF[0],PROF[1]+PROF_INT,PROF_INT)]
+# valid_trials=[(i,j) for i in np.arange(len(manuf))
+#                     for j in np.arange(i+1)]
+# x=[(manuf[id[0]],manuf[id[1]]) for id in valid_trials]
+# x=np.array([list(itertools.chain(*x[i])) for i in np.arange(len(x))]) #squash
+#
+# # populate rest of grid
+# grid=np.array([(x[M,0],x[M,2],x[M,1],x[M,3],D,G,OG,P1,P2)
+#        for M in np.arange(len(x))
+#        for D in np.arange(DEM[0],DEM[1]+DEM_INT,DEM_INT)
+#        for G in np.arange(GAM[0],GAM[1]+GAM_INT,GAM_INT)
+#        for OG in np.arange(OBJ_GOVT[0],OBJ_GOVT[1]+OBJ_GOVT_INT,OBJ_GOVT_INT)
+#        for P1 in M1_INFLATION
+#        for P2 in M2_INFLATION
+#     ])
 
-# populate rest of grid
-grid=np.array([(x[M,0],x[M,2],x[M,1],x[M,3],D,G,OG,P1,P2)
-       for M in np.arange(len(x))
+# populate grid with distinct manufacturers
+grid=np.array([(K1,K2,P1,P2,D,G,OG,I1,I2)
+       for K1 in np.arange(M1_CAP[0],M1_CAP[1]+M1_CAP_INT,M1_CAP_INT)
+       for K2 in np.arange(M2_CAP[0],M2_CAP[1]+M2_CAP_INT,M2_CAP_INT)
+       for P1 in np.arange(M1_PROF[0],M1_PROF[1]+M1_PROF_INT,M1_PROF_INT)
+       for P2 in np.arange(M2_PROF[0],M2_PROF[1]+M2_PROF_INT,M2_PROF_INT)
        for D in np.arange(DEM[0],DEM[1]+DEM_INT,DEM_INT)
        for G in np.arange(GAM[0],GAM[1]+GAM_INT,GAM_INT)
        for OG in np.arange(OBJ_GOVT[0],OBJ_GOVT[1]+OBJ_GOVT_INT,OBJ_GOVT_INT)
-       for P1 in M1_INFLATION
-       for P2 in M2_INFLATION
+       for I1 in M1_INFLATION
+       for I2 in M2_INFLATION
     ])
 
 # convert to data frame

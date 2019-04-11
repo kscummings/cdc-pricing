@@ -1,10 +1,11 @@
 # See readme for instructions
 
 
-N=200               # batch size. recommended: 100-200
-DIREC="temp_test"   # directory for all outputs
+N=50               # batch size. recommended: 100-200
+DIREC="test"   # directory for all outputs
 
 NUM_TRIALS=$(python3 params.py $DIREC)
+echo $NUM_TRIALS
 
 for ((n = 1; n <= $NUM_TRIALS; n++)); do
 
