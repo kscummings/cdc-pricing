@@ -54,8 +54,8 @@ all_text.append("param objCost = "+trial['obj_govt']+"; \n")    # objective func
 all_text.append("param inflationPrice := x "+trial['m1_infl']+"\n y "+trial['m2_infl']+"; \n")
 
 gamma = float(trial['prod_sim'])                                # linear demand curves
-a = [2219700+1102300/(1+gamma), 1674500+2246600/(1+gamma)]      # pub, priv (HEPB)
-#a = [1396000+1526143/(1+gamma), 1053000+2361286/(1+gamma)]      # pub, priv (DTAP)
+#a = [2219700+1102300/(1+gamma), 1674500+2246600/(1+gamma)]      # pub, priv (HEPB)
+a = [1365000+1553000/(1+gamma), 1030000+2389000/(1+gamma)]      # pub, priv (DTAP)
 b = [100000/((1+gamma)*(1-gamma)), 100000/((1+gamma)*(1-gamma))]
 c = [gamma*b[0], gamma*b[1]]
 all_text.append("param: a := \n public "+str(a[0])+"\n private "+str(a[1])+";\n")
