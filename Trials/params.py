@@ -47,32 +47,54 @@ except OSError:     # directory exists
 
 #---------------------------- GLOBAL TRIAL INPUTS (maxes are inclusive)
 
-DEM = [4.034 *MIL , 4.034 *MIL]                # total annual US demand
-DEM_INT = 76600                                # demand interval
+# total annual US demand.  
+# Base value: 4.034*MIL. 
+# Sensitivity Analysis: [4.00*MIL, 7.832*MIL]
+DEM = [4.034*MIL, 4.034*MIL]			
+DEM_INT = 5*MIL                                # demand interval
 
-GAM = [0.25, 0.3]                               # product similarity in [0,1], where 1=identical
-GAM_INT = 0.05
+# product similarity in [0,1], where 1=identical
+# Base value: 0.25
+# Sensitivity Analysis: [0, 0.5]
+GAM = [0.25, 0.25]                               
+GAM_INT = 1
 
-OBJ_GOVT = [1, 1]                  # objective function weight for gov't cost
-OBJ_GOVT_INT = 5                     # gov't cost weight interval
+# objective function weight for gov't cost. 
+# Base value: OBJ
+# Sensitivity Analysis: [1,1]
+OBJ_GOVT = [OBJ, OBJ]                  
+OBJ_GOVT_INT = 6*OBJ                     # gov't cost weight interval
 
-M1_INFLATION = [100] #rec                   # inflation price upper bound
-M2_INFLATION = [100] #eng
+# inflation price upper bound
+# Base value (M1 = Infanrix): 18.62
+# Base value (M2 = Daptacel): 18.02
+# Sensitivity Analysis: [100,100] (effectively infinite)
+
+M1_INFLATION = [18.62] # Infanrix
+M2_INFLATION = [18.02]  # Daptacel
 
 
 #---------------------------- CREATE PARAMETER GRID
 
 if STANDARD==1:
 
-    M1_CAP = [4.034 *MIL, 4.034 *MIL] #rec              # production capacity min, max
-    M1_CAP_INT = 23480                                 # production capacity interval
-    M2_CAP = [4.034 *MIL, 4.034 *MIL] #eng
+#Production capacity min, max
+# Base value: 4.034*MIL
+# Sensitivity Analysis: [2.837*MIL, 4.034 * MIL]
+    M1_CAP = [4.5*MIL, 4.5*MIL] #inf              
+    M1_CAP_INT = 25000                                 # production capacity interval
+    M2_CAP = [2*MIL, 4.5*MIL] #dap
     M2_CAP_INT = M1_CAP_INT
 
-    M1_PROF = [41 *MIL, 41 *MIL] #rec              # target profit min, max
-    M1_PROF_INT = 530 *TH                              # target profit interval
-    M2_PROF = [41 *MIL, 41 *MIL] #eng
-    M2_PROF_INT = 530 *TH
+#Target profit 
+# Base value (M1 = Infanrix): 39.8*MIL
+# Base value (M2 = Daptacel): 45.1*MIL
+# Sensitivity Analysis: [26.5*MIL, 53.0*MIL]
+
+    M1_PROF = [39.8*MIL, 39.8*MIL] #rec              # target profit min, max
+    M1_PROF_INT = 1*MIL                              # target profit interval
+    M2_PROF = [45.1*MIL, 45.1*MIL] #eng
+    M2_PROF_INT = 1*MIL                              
 
     # populate grid with distinct manufacturers
     grid=np.array([(K1,K2,P1,P2,D,G,OG,I1,I2)
@@ -90,7 +112,7 @@ if STANDARD==1:
 
 ########## generate unique pairs of manufacturers
 # doesnt think about inflation bounds
-if UNIQUE==1:
+if UNIQUE_MANUF==1:
 
     CAP = [4.034 *MIL , 4.034 *MIL]                # production capacity min, max
     CAP_INT = 100 *MIL                      # production capacity interval
@@ -165,12 +187,12 @@ if DEM_PROF==1:
 # run capacity profit difference trials
 if CAP_PROF==1:
 
-    TOTAL_PROF = 81 *MIL
-    PROF = [26.5 *MIL, 54.5 *MIL]
-    PROF_INT = 560*TH
+    TOTAL_PROF = 82 *MIL
+    PROF = [38*MIL, 44*MIL]
+    PROF_INT = 2*MIL
     TOTAL_CAP = 4.034*2 *MIL
-    CAP = [1.68 *MIL, 4.034 *MIL]
-    CAP_INT = 47080
+    CAP = [2.034*MIL, 4.034*MIL]
+    CAP_INT = MIL
 
     grid=np.array([(K,TOTAL_CAP-K,P,TOTAL_PROF - P,D,G,OG,I1,I2)
            for K in np.arange(CAP[0],CAP[1]+CAP_INT,CAP_INT)
