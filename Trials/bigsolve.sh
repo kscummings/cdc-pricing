@@ -1,8 +1,8 @@
 # See readme for instructions
 
 
-N=50               # batch size. recommended: 100-200
-DIREC="test"   # directory for all outputs
+N=150              # batch size. recommended: 100-200
+DIREC="triangle"   # directory for all outputs
 
 NUM_TRIALS=$(python3 params.py $DIREC)
 echo $NUM_TRIALS
