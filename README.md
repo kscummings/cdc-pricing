@@ -1,9 +1,8 @@
 # Vaccine market analysis
 ___
 
-**Work in progress!**
 
- This code is for the paper, "CDC as a Strategic Agent in the Pediatric Vaccine Market:
+ This code is for the MSOM paper, "CDC as a Strategic Agent in the Pediatric Vaccine Market:
  An Analytical Approach," joint with B. Behzad and S. Martonosi.
 
 ### Inputs
