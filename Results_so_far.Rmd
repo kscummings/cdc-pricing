@@ -1,0 +1,1666 @@
+---
+title: "Results so far"
+output: 
+  html_document:
+    theme: united
+    number_sections: true
+    toc: true
+    toc_depth: 2
+    toc_float: 
+      collapsed: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,message=FALSE,warning=FALSE)
+library(tidyverse)
+library(readr)
+library(knitr)
+library(emdbook)
+setwd("~/Desktop/Publications/CDC/cdc-pricing")
+```
+
+```{r}
+# compute stability metric
+get_stability <- function(df) {
+  temp <- df %>% 
+    filter(!is.na(m1_pub_price)) %>%
+    mutate(R=(m1_prof+m2_prof-m1_priv_price*m1_priv_quant-
+              m2_priv_price*m2_priv_quant)/govt_cost)
+  temp2 <- df %>%
+    filter(is.na(m1_pub_price)) %>%
+    mutate(R=NA)
+  return(rbind(temp,temp2))
+}
+
+ 
+```
+
+```{r}
+# load data
+demand <- read_csv("./Trials/Market_val/DTaP_dem/DTaP_dem_results.csv") %>% get_stability()
+demand_inf <- read_csv("./Trials/Market_val/DTaP_dem_inflation/DTaP_dem_inflation_results.csv") %>% get_stability()
+
+
+prod_sim <- read_csv("./Trials/Market_val/DTaP_prodSim/DTaP_prodSim_results.csv") %>% get_stability()
+prod_sim_inf <- read_csv("./Trials/Market_val/DTaP_prodSim_inflation/DTaP_prodSim_inflation_results.csv") %>% get_stability()
+
+
+cap <- read_csv("./Trials/Market_val/DTaP_capacities/DTaP_prodSim_results.csv") %>% get_stability()
+cap_inf <- read_csv("./Trials/Market_val/DTaP_cap_inflation/DTaP_cap_inflation_results.csv") %>% get_stability()
+
+prof <- read_csv("./Trials/Market_val/DTaP_prof/DTaP_prof_results.csv") %>% get_stability()
+prof_inf <- read_csv("./Trials/Market_val/DTaP_prof_inflation/DTaP_prof_inflation_results.csv") %>% get_stability()
+
+prof_infanrix <- read_csv("./Trials/Market_val/DTaP_prof_inf/DTaP_prof_inf_results.csv") %>% get_stability()
+prof_daptacel <- read_csv("./Trials/Market_val/DTaP_prof_dap/DTaP_prof_dap_results.csv") %>%
+  get_stability()
+prof_infanrix_inf <- read_csv("./Trials/Market_val/DTaP_prof_inf_inflation/DTaP_prof_inf_inflation_results.csv") %>% get_stability()
+prof_daptacel_inf <- read_csv("./Trials/Market_val/DTaP_prof_dap_inflation/DTaP_prof_dap_inflation_results.csv") %>% get_stability()
+```
+
+# Market Validation {.tabset}
+
+
+
+## DTaP Prices
+
+This tab shows the price distributions of each manufacturer, with and without inflation bounds, for the following tests.
+
+* $\gamma \in [0,0.5]$ because products are dissimilar (e.g., syringe vs. vial), will use $\gamma = 0.25$ as a base for other sensitivity analysis
+* $D \in [4\times 10^6, 7.83\times 10^6]$, base value $D = 4.034\times 10^6$
+* $P_i \in [\$26.5M, \$53M]$, base values $P_{dap} = \$43.5$M, $P_{inf} = \$38.5$M.
+* $K_i \in[2.86\times10^6,4.034\times10^6]$, base values $K_i = D$ because there was no shortage
+* Infanrix (GSK) inflation price: $\$16.85\cdot 1.1=\$17.69$
+* Daptacel (SP) inflation price: $\$16.73\cdot 1.023806=\$17.57$
+* $\mu \in \Theta(10^{-4})$ because CDC cost is $O(p^{\text{pub}}q^{\text{pub}}) = O(10^8)$ and price difference is $O(10^2)$. Empirically, weighting CDC cost more by about two orders of magnitude ensures CDC cost remains the priority while still being able to detect smaller price differences. We use $\mu = 10^{-4}$
+
+ Still to do: visualize infeasible tested instances.
+
+
+### Inflation bounds
+```{r,echo=FALSE,warning=FALSE,message=FALSE}  
+all_inf <- demand_inf %>%
+  rbind(prod_sim_inf) %>%
+  rbind(cap_inf) %>%
+  rbind(prof_inf)
+  #rbind(prof_infanrix_inf) %>%
+  #rbind(prof_daptacel_inf)
+
+all_inf %>%
+  select(m1_pub_price,m2_pub_price) %>%
+  gather(key="manuf",value="pub_price") %>%
+  ggplot(aes(x=manuf,y=pub_price)) +
+  geom_boxplot(fatten=3) +
+  theme_bw() +
+  #labs(x="Manufacturer",y="Public sector price") +
+  labs(x="",y="Price (USD)") +
+  coord_flip()+
+  scale_x_discrete(labels=c("m1_pub_price"="Infanrix (GSK)",
+                            "m2_pub_price"="Daptacel (SP)")) +
+  scale_y_continuous(expand = c(0, 0),limits = c(0,20)) +
+  geom_hline(aes(yintercept=17.73,linetype="Infanrix $17.73"),color="blue",size=1) +
+  geom_hline(aes(yintercept=17.16,linetype="Daptacel $17.16"),color="blue",size=1) +
+  scale_linetype_manual("True price",values=c(2,3)) +
+  theme(text = element_text(size=20))
+```
+
+There are `r all_inf %>% filter(is.na(m1_pub_price))%>%nrow()` infeasible instances out of `r all_inf%>%nrow()`, approximately 15%. 
+
+
+### No inflation bounds
+```{r,echo=FALSE,warning=FALSE,message=FALSE}  
+all <- demand %>%
+  rbind(prod_sim) %>%
+  rbind(cap) %>%
+  rbind(prof)
+
+all %>%
+  select(m1_pub_price,m2_pub_price) %>%
+  gather(key="manuf",value="pub_price") %>%
+  ggplot(aes(x=manuf,y=pub_price)) +
+  geom_boxplot() +
+  theme_bw() +
+  #labs(x="Manufacturer",y="Public sector price") +
+  labs(x="",y="")+
+  ylim(c(0,30)) +
+  coord_flip()+
+  ggtitle("Distribution of public sector prices by manufacturer",
+          subtitle="True prices = dotted blue lines")+
+  scale_x_discrete(labels=c("m1_pub_price"="Infanrix (GSK)",
+                            "m2_pub_price"="Daptacel (SP)")) +
+  geom_hline(yintercept=17.73,color="blue",linetype=2) +
+  geom_hline(yintercept=17.16,color="red",linetype=2)
+
+```
+
+## HepB Prices
+
+This tab shows the price distributions of each manufacturer, with and without inflation bounds, for the following tests.
+
+* $\gamma \in [0,0.5]$ because products are dissimilar (e.g., syringe vs. vial), will use $\gamma = 0.25$ as a base for other sensitivity analysis
+* $D \in [6.4\times 10^6, 9.24\times 10^6]$, base value $D = 7.032\times 10^6$
+* $P_i \in [\$36.9M, \$73.8M]$, base values $P_{rec} = \$58.2$M, $P_{eng} = \$55.1$M.
+* $K_i \in [4.031\times10^6,7.032\times10^6]$, base values $K_i = D$ because there was no shortage
+* Recombivax HB (Merck) inflation price: $\$12.30\cdot 1.1=\$13.53$
+* Engerix B (GSK) inflation price: $\$11.60\cdot 1.1=\$12.76$
+* $\mu \in \Theta(10^{-4})$ because CDC cost is $O(p^{\text{pub}}q^{\text{pub}}) = O(10^8)$ and price difference is $O(10^2)$. Empirically, weighting CDC cost more by about two orders of magnitude ensures CDC cost remains the priority while still being able to detect smaller price differences. We use $\mu = 10^{-4}$
+
+ Still to do: visualize infeasible tested instances.
+
+```{r}
+# load data
+h_demand <- read_csv("./Trials/Market_val/HepB_dem/HepB_dem_results.csv") %>% get_stability()
+h_demand_inf <- read_csv("./Trials/Market_val/HepB_dem_inflation/HepB_dem_inflation_results.csv") %>% get_stability()
+
+
+h_prod_sim <- read_csv("./Trials/Market_val/HepB_prodSim/HepB_prodSim_results.csv") %>% get_stability()
+h_prod_sim_inf <- read_csv("./Trials/Market_val/HepB_prod_sim_inflation/HepB_prod_sim_inflation_results.csv") %>% get_stability()
+
+
+h_cap <- read_csv("./Trials/Market_val/HepB_cap/HepB_cap_results.csv") %>% get_stability()
+h_cap_inf <- read_csv("./Trials/Market_val/HepB_cap_inflation/HepB_cap_inflation_results.csv") %>% get_stability()
+
+h_prof <- read_csv("./Trials/Market_val/HepB_prof/HepB_prof_results.csv") %>% get_stability()
+h_prof_inf <- read_csv("./Trials/Market_val/HepB_prof_inflation/HepB_prof_inflation_results.csv") %>% get_stability()
+
+prof_rec <- read_csv("./Trials/Market_val/HepB_prof_rec/HepB_prof_rec_results.csv") %>% get_stability()
+prof_eng <- read_csv("./Trials/Market_val/HepB_prof_eng/HepB_prof_eng_results.csv") %>%
+  get_stability()
+prof_rec_inf <- read_csv("./Trials/Market_val/HepB_prof_rec_inflation/HepB_prof_rec_inflation_results.csv") %>% get_stability()
+prof_eng_inf <- read_csv("./Trials/Market_val/HepB_prof_eng_inflation/HepB_prof_eng_inflation_results.csv") %>% get_stability()
+```
+
+### Inflation bounds
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}  
+h_all_inf <- h_demand_inf %>%
+  rbind(h_prod_sim_inf) %>%
+  rbind(h_cap_inf) %>%
+  rbind(h_prof_inf)
+
+h_all_inf %>%
+  select(m1_pub_price,m2_pub_price) %>%
+  gather(key="manuf",value="pub_price") %>%
+  ggplot(aes(x=manuf,y=pub_price)) +
+  geom_boxplot(outlier.size=0.5,fatten=3) +
+  theme_bw() +
+  #labs(x="Manufacturer",y="Public sector price") +
+  labs(x="",y="Price (USD)") +
+  coord_flip()+
+  scale_x_discrete(labels=c("m1_pub_price"="Recombivax HB (Merck)",
+                            "m2_pub_price"="Engerix B (GSK)")) +
+  scale_y_continuous(limits=c(0,20),expand=c(0,0))+
+  geom_hline(aes(yintercept=12.30,linetype="Both $12.30"),color="blue",size=1) +
+  scale_linetype_manual("True price",values=c(2)) +
+  theme(text=element_text(size=20))
+```
+
+Of `r h_all_inf%>%nrow()` observations, `r h_all_inf%>%filter(is.na(m1_pub_price))%>%nrow()` are infeasible, which is approximately 23%.
+
+
+
+### No inflation bounds
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}  
+all <- h_demand %>%
+  rbind(h_prod_sim) %>%
+  rbind(h_cap) %>%
+  rbind(h_prof)
+
+all %>%
+  select(m1_pub_price,m2_pub_price) %>%
+  gather(key="manuf",value="pub_price") %>%
+  ggplot(aes(x=manuf,y=pub_price)) +
+  geom_boxplot(outlier.size=0.5) +
+  theme_bw() +
+  #labs(x="Manufacturer",y="Public sector price") +
+  labs(x="",y="")+
+  ylim(c(0,25)) +
+  coord_flip()+
+  ggtitle("Distribution of public sector prices by manufacturer",
+          subtitle="Blue line = true prices for both")+
+  scale_x_discrete(labels=c("m1_pub_price"="Recombivax HB (Merck)",
+                            "m2_pub_price"="Engerix B (GSK)")) +
+  geom_hline(yintercept=12.30,color="blue",linetype=2) 
+
+```
+
+
+
+
+# CDC spending and demand fulfillment
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+all_inf %>%
+  mutate(market="DTaP") %>%
+  ggplot(aes(x=market,y=govt_cost)) +
+  geom_boxplot(outlier.size=0.5,fatten=3) +
+  theme_bw() +
+  coord_flip() +
+  scale_y_continuous("Cost (million USD)",
+                     breaks=c(0,1e07,2e07,3e07,4e07,5e07),
+                     labels=c("0","10","20","30","40","50"),
+                    # expand=c(0,0),
+                     limits=c(0,5e07)) +
+  scale_x_discrete("",labels=c("")) +
+  theme(text=element_text(size=20))
+
+all_inf%>%
+  ggplot() +
+  geom_boxplot(aes(x="Total demand",
+                   y=(m1_priv_quant+m2_priv_quant+m1_pub_quant+m2_pub_quant)/dem),
+               outlier.size=0.5,fatten=3) +
+  geom_boxplot(aes(x="Public sector demand",
+                   y=(m1_pub_quant+m2_pub_quant)/(0.57*dem)),
+               outlier.size=0.5,fatten=3) +
+  theme_bw() +
+  coord_flip() +
+  scale_x_discrete("") +
+  scale_y_continuous("Proportion",
+                     limits=c(1,2)
+                     #expand=c(0,0)
+                     ) +
+  theme(text=element_text(size=20))
+```
+
+# Feasible regions {.tabset}
+
+Here are the new feasible region visualizations.
+
+## DTaP
+
+Base case:
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.25 #as.numeric(prod_sim)
+m1_capacity <- 4034000 #as.numeric(m1_capacity)
+m2_capacity <- 4034000# as.numeric(m2_capacity)
+m1_profit <- 38500000#as.numeric(m1_profit)
+m2_profit <- 43500000#as.numeric(m2_profit)
+demand <- 4034000#as.numeric(demand)
+xmax <- 4000000#as.numeric(xmax)
+ymax <- 4000000#as.numeric(ymax)
+m1_infl <- 17.69
+m2_infl <- 17.57
+
+# if market == D
+priv_price <- (34.143+10.53*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.414+1.053*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (1.396*(1+prod_sim)+1.526)*10^6
+U <- (3.414+1.053*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+scale_y_continuous("",expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous("",expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1)) 
+
+
+```
+
+Base case, with equal target profits (same total market target profit), equal inflation bounds (same total)
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.25 #as.numeric(prod_sim)
+m1_capacity <- 4034000 #as.numeric(m1_capacity)
+m2_capacity <- 4034000# as.numeric(m2_capacity)
+m1_profit <- 41000000#as.numeric(m1_profit)
+m2_profit <- 41000000#as.numeric(m2_profit)
+demand <- 4034000#as.numeric(demand)
+xmax <- 4000000#as.numeric(xmax)
+ymax <- 4000000#as.numeric(ymax)
+m1_infl <- 17.63
+m2_infl <- 17.63
+
+# if market == D
+priv_price <- (34.143+10.53*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.414+1.053*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (1.396*(1+prod_sim)+1.526)*10^6
+U <- (3.414+1.053*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+scale_y_continuous("",expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous("",expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1))
+
+
+```
+
+Base case, with equal target profits, higher product similarity ($\gamma = 0.5$), equal inflation bounds
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.5 #as.numeric(prod_sim)
+m1_capacity <- 4034000 #as.numeric(m1_capacity)
+m2_capacity <- 4034000# as.numeric(m2_capacity)
+m1_profit <- 41000000#as.numeric(m1_profit)
+m2_profit <- 41000000#as.numeric(m2_profit)
+demand <- 4034000#as.numeric(demand)
+xmax <- 4000000#as.numeric(xmax)
+ymax <- 4000000#as.numeric(ymax)
+m1_infl <- 17.63
+m2_infl <- 17.63
+
+# if market == D
+priv_price <- (34.143+10.53*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.414+1.053*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (1.396*(1+prod_sim)+1.526)*10^6
+U <- (3.414+1.053*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1.5
+             ) +
+scale_y_continuous(expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous(expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+xlab("SP (Daptacel) Public Sector Quantity (millions)") +
+ylab("GSK (Infanrix) Public Sector Quantity (millions)") +
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1))
+
+
+```
+
+## HepB
+
+Base case:
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs 
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.25 #as.numeric(prod_sim)
+m1_capacity <- 7032000 #as.numeric(m1_capacity)
+m2_capacity <- 7032000# as.numeric(m2_capacity)
+m1_profit <- 58200000#as.numeric(m1_profit)
+m2_profit <- 55100000#as.numeric(m2_profit)
+demand <- 7032000#as.numeric(demand)
+xmax <- 6000000#as.numeric(xmax)
+ymax <- 6000000#as.numeric(ymax)
+m1_infl <- 13.53
+m2_infl <- 12.76
+ 
+# if market == D
+priv_price <-(39.211+16.745*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.9211+1.6745*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (2.2197*(1+prod_sim)+1.1023)*10^6
+U <- (3.9211+1.6745*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+scale_y_continuous("",expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous("",expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1))
+
+
+```
+
+Base case, with equal target profits (same total market target profit)
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.25 #as.numeric(prod_sim)
+m1_capacity <- 7032000 #as.numeric(m1_capacity)
+m2_capacity <- 7032000# as.numeric(m2_capacity)
+m1_profit <- 56650000#as.numeric(m1_profit)
+m2_profit <- 56650000#as.numeric(m2_profit)
+demand <- 7032000#as.numeric(demand)
+xmax <- 6000000#as.numeric(xmax)
+ymax <- 6000000#as.numeric(ymax)
+m1_infl <- 13.145
+m2_infl <- 13.145
+
+# if market == D
+priv_price <-(39.211+16.745*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.9211+1.6745*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (2.2197*(1+prod_sim)+1.1023)*10^6
+U <- (3.9211+1.6745*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+scale_y_continuous("",expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous("",expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1))
+
+
+```
+
+Base case, with equal target profits, and higher product similarity
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# inputs
+#    market = "D" or "H" for DTaP or HepB
+#    prod_sim = product similarity
+#    mi_capacity = manuf. i capacity
+#    mi_profit = manuf. i target profit
+#    demand
+#    xmax, ymax = maximum limit of viewing pane
+
+# parse arguments
+prod_sim <- 0.5 #as.numeric(prod_sim)
+m1_capacity <- 7032000 #as.numeric(m1_capacity)
+m2_capacity <- 7032000# as.numeric(m2_capacity)
+m1_profit <- 56650000#as.numeric(m1_profit)
+m2_profit <- 56650000#as.numeric(m2_profit)
+demand <- 7032000#as.numeric(demand)
+xmax <- 6000000#as.numeric(xmax)
+ymax <- 6000000#as.numeric(ymax)
+m1_infl <- 13.145
+m2_infl <- 13.145
+
+# if market == D
+priv_price <-(39.211+16.745*prod_sim)*(1-prod_sim)/(2-prod_sim)
+priv_quant <- (3.9211+1.6745*prod_sim)/((1+prod_sim)*(2-prod_sim))*10^6
+alpha_pub <- (2.2197*(1+prod_sim)+1.1023)*10^6
+U <- (3.9211+1.6745*prod_sim)/prod_sim*
+    (1-2*(1-prod_sim)^0.5/((1+prod_sim)^0.5*(2-prod_sim)))*10^6
+
+# target profit curves
+m1_prof <- emdbook::curve3d(
+  (alpha_pub-y-prod_sim*x)*y*10^(-5)-m1_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_prof$z) <- list(m1_prof$x, m1_prof$y)
+m1_prof_df <- reshape2::melt(m1_prof$z)
+m2_prof <- emdbook::curve3d(
+  (alpha_pub-x-prod_sim*y)*x*10^(-5)-m2_profit+priv_price*priv_quant,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_prof$z) <- list(m2_prof$x, m2_prof$y) # m2 = gsk
+m2_prof_df <- reshape2::melt(m2_prof$z)
+
+# public sector demand threshold
+dem <- emdbook::curve3d(
+  (x+y-0.57*demand),
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none")
+dimnames(dem$z) <- list(dem$x, dem$y)
+dem_df <- reshape2::melt(dem$z)
+
+# public sector price non-negativity
+m1_price <- emdbook::curve3d(
+  alpha_pub-y-prod_sim*x,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price$z) <- list(m1_price$x, m1_price$y)
+m1_price_df <- reshape2::melt(m1_price$z)
+m2_price <- emdbook::curve3d(
+  alpha_pub-x-prod_sim*y,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price$z) <- list(m2_price$x, m2_price$y)
+m2_price_df <- reshape2::melt(m2_price$z)
+
+# public sector price inflation bounds
+m1_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-y-prod_sim*x)-m1_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_price_infl$z) <- list(m1_price_infl$x, m1_price_infl$y)
+m1_price_infl_df <- reshape2::melt(m1_price_infl$z)
+m2_price_infl <- emdbook::curve3d(
+  10^(-5)*(alpha_pub-x-prod_sim*y)-m2_infl,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_price_infl$z) <- list(m2_price_infl$x, m2_price_infl$y)
+m2_price_infl_df <- reshape2::melt(m2_price_infl$z)
+
+
+# production capacities
+m1_cap <- emdbook::curve3d(
+  x-m1_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m1_cap$z) <- list(m1_cap$x, m1_cap$y)
+m1_cap_df <- reshape2::melt(m1_cap$z)
+m2_cap <- emdbook::curve3d(
+  y-m2_capacity+U,
+  xlim=c(-100000,xmax),
+  ylim=c(-100000,ymax),
+  sys3d="none"
+)
+dimnames(m2_cap$z) <- list(m2_cap$x, m2_cap$y)
+m2_cap_df <- reshape2::melt(m2_cap$z)
+
+dummy.data <- data.frame(x=1,y=2)
+dummy.data %>% 
+ggplot(aes(x=x,y=y)) +
+geom_contour(data=m1_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=m2_prof_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Target profit"),
+             breaks=0,
+             colour="black"
+             ) +
+geom_contour(data=dem_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Demand"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+ geom_contour(data=m2_price_infl_df,
+              aes(x=Var1,y=Var2,z=value,
+                  linetype="Public sector price bound"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m1_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+geom_contour(data=m2_cap_df,
+             aes(x=Var1,y=Var2,z=value,
+                 linetype="Public sector capacity"),
+             breaks=0,
+             colour="black",
+             size=1
+             ) +
+scale_y_continuous("",expand=c(0,0),limits = c(0,ymax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+scale_x_continuous("",expand=c(0,0),limits = c(0,xmax),
+                   breaks=c(0,2e6,4e6,6e6),labels=c("0","2","4","6"))+
+theme_classic() +
+theme(text = element_text(size=20)) +
+scale_linetype_manual("Constraint",
+      values=c("Target profit"=1,"Demand"=2,"Public sector price bound"=3, 
+               "Public sector capacity"=4)) +
+guides(fill = guide_legend(keywidth = 1, keyheight = 1),
+  linetype=guide_legend(keywidth = 3, keyheight = 1),
+  colour=guide_legend(keywidth = 3, keyheight = 1))
+
+
+```
+
+# Heat Maps {.tabset}
+
+Here will be the recreated heat maps for each market. We will take away the inflation bounds to give our model the most flexibility to choose the prices that would facilitate the most stable version of the market. This model choice is in the spirit of evaluating the efficacy of policies imposed on market pricing. We also set $\mu = 1$ to ensure that minimum-cost solutions are selected (we don't care about price difference among multiple optima when we are evaluating market stability--government pays the same price in each scenario).
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+get_rev_stability <- function(df) {
+  temp <- df %>% 
+    filter(!is.na(m1_pub_price)) %>%
+    mutate(R_rev=R/2+(m1_cap+m2_cap-m1_pub_quant-m2_pub_quant-
+                      m1_priv_quant-m2_priv_quant)/(2*(m1_cap+m2_cap-dem)))
+  temp2 <- df %>%
+    filter(is.na(m1_pub_price)) %>%
+    mutate(R_rev=NA)
+  return(rbind(temp,temp2))
+}
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# get data
+d_cap <- read_csv("./Trials/DTaPhm_cap/DTaPhm_cap_results.csv") %>% get_stability() %>% get_rev_stability()
+d_cap_2 <- read_csv("./Trials/DTaPhm_cap_2/DTaPhm_cap_2_results.csv")%>%get_stability()
+d_prof <- read_csv("./Trials/DTaPhm_prof/DTaPhm_prof_results.csv") %>% get_stability() %>% get_rev_stability()
+d_dem_cap <- read_csv("./Trials/DTaPhm_dem_cap/DTaPhm_dem_cap_results.csv") %>% get_stability()   %>% get_rev_stability()
+d_dem_cap_2 <- read_csv("./Trials/DTaPhm_dem_cap_2/DTaPhm_dem_cap_2_results.csv")%>%get_stability()
+d_dem_prof <- read_csv("./Trials/DTaPhm_dem_prof/DTaPhm_dem_prof_results.csv") %>% get_stability()   %>% get_rev_stability()
+d_dem_prof_2 <- read_csv("./Trials/DTaPhm_dem_prof_2/DTaPhm_dem_prof_2_results.csv") %>% get_stability()
+d_cap_prof <- read_csv("./Trials/DTaPhm_cap_prof/DTaPhm_cap_prof_results.csv") %>% get_stability()   %>% get_rev_stability()
+d_cap_prof_2 <- read_csv("./Trials/DTaPhm_cap_prof_2/DTaPhm_cap_prof_2_results.csv") %>% get_stability()   
+```
+
+## Capacities
+
+### DTaP
+
+Equal target profits, so $(\$43.5M+\$38.5M)/2=\$41M$.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_cap_2 %>%
+  ggplot(aes(x=m1_cap,y=m2_cap,fill=R)) +
+  geom_raster() +
+  scale_fill_gradient(lim=c(0.5,1),low="black",high="white",na.value="grey") +
+  theme_bw() +
+  scale_x_continuous("Infanrix Capacity (million units)",
+                     expand=c(0,0),
+                     breaks=c(3e6,3.5e6,4e6,4.5e6),
+                     labels=c("3.0","3.5","4.0","4.5")) +
+  scale_y_continuous("Daptacel Capacity (million units)",
+                     expand=c(0,0),
+                     breaks=c(3e6,3.5e6,4e6,4.5e6),
+                     labels=c("3.0","3.5","4.0","4.5")) +
+  theme(text=element_text(size=20))
+```
+
+### HepB
+
+Equal target profits
+
+
+
+## Target Profits
+
+### DTaP
+
+Equal capacities
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_prof %>%
+  ggplot(aes(x=m1_prof,y=m2_prof,fill=R)) +
+  geom_raster() +
+  scale_fill_gradientn(lim=c(0,1),colours=c("red","black","white"),na.value="grey",
+                       breaks=c(0,0.5,1),labels=c("0","0.5","1")) +
+  theme_bw() +
+  scale_x_continuous("Infanrix Target Profit (million USD)",
+                     expand=c(0,0),
+                     breaks=c(3e7,4e7,5e7),
+                     labels=c("30","40","50")) +
+  scale_y_continuous("Daptacel Target Profit (million USD)",
+                     expand=c(0,0),
+                     breaks=c(3e7,4e7,5e7),
+                     labels=c("30","40","50")) +
+  theme(text=element_text(size=20))
+```
+
+### HepB
+
+Equal capacities
+
+## Demand vs. capacity difference
+
+
+
+### DTaP
+
+Equal target profits of \$41M.
+
+Minimum capacity needs to be such that each manufacturer can produce enough in the private sector. Since $q_i^{\text{priv}}=1.68M$, we test manufacturer 1 capacity $K \in [1.68M, 4.032M]$, with manufacturer 2's capacity being in $[4.032M, 8.064M-1.68M] = [4.032M, 6.384M]$. We are keeping the total market capacity the same as in the baseline case, so $2K = 4.032M = 8.064M$. We also equalize target profits to control for the effect of capacity difference.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_dem_cap %>%
+  ggplot(aes(x=dem,y=m2_cap-m1_cap,fill=R)) +
+  geom_raster() +
+  scale_fill_gradient(low="black",high="white",na.value="red",lim=c(0.5,1)) +
+  theme_bw() +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
+  xlab("Demand") +
+  ylab("Capacity difference") +
+  ggtitle("Government stability vs. demand and capacity difference",
+          subtitle="No inflation bounds")
+
+cap_diff_labs<-c("0","5e+05","1e+06","1500000","2e+06","2500000","3e+06")
+names(cap_diff_labs)<-c("0M","0.5M","1M","1.5M","2M","2.5M","3M")
+d_dem_cap_2%>%
+  mutate(cap_diff=as.factor(m2_cap-m1_cap))%>%
+  ggplot(aes(x=dem,y=R))+
+  geom_line(color="black",size=1.5)+
+  theme_bw()+
+  scale_x_continuous("Demand (million units)",
+                      breaks=c(4e6,5e6,6e6,7e6),
+                     labels=c("4","5","6","7"))+
+  scale_y_continuous("R",
+                     limits=c(0.7,1),
+                     breaks=c(0.7,0.8,0.9,1),
+                     labels=c("0.7","0.8","0.9","1.0"))+
+  theme(text=element_text(size=20))+
+  facet_grid(~cap_diff)+
+  scale_color_discrete("Capacity difference",
+                       labels=c("0M","0.5M","1M","1.5M","2M","2.5M","3M"))+
+  theme(text=element_text(size=20))
+  
+```
+
+### HepB
+
+Equal target profits of \$56.65M. $K \in [1.98M, 7.032M]$. $K_total = 14.064M$. $K_int = 101040$. $D \in [6.4M, 9.24M], D_{int} = 56800$.
+
+## Demand vs. target profit difference
+
+
+
+### DTaP
+
+Equal (high) capacities of \$4.034M.
+
+We keep total market target profit the same, so \$82M. Minimum target profit needs to be the amount that manufacturers earn in the private sector, so manufacturer 1 target profit is in the range $P \in [\$26.5M, \$41M]$, which means manufacturer 2 is in the range $[\$41M, \$82M - \$26.5M] = [\$41M, \$55.5M]$.
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_dem_prof %>%
+  ggplot(aes(x=dem,y=m2_prof-m1_prof,fill=R)) +
+  geom_raster() +
+  scale_fill_gradient(low="black",high="white",na.value="red",lim=c(0.5,1)) +
+  theme_bw() +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_y_continuous(expand=c(0,0)) +
+  xlab("Demand") +
+  ylab("Target Profit difference") +
+  ggtitle("Government stability vs. demand and target profit difference",
+          subtitle="No inflation bounds")
+
+d_dem_prof_2%>%
+  filter(m2_prof-m1_prof<20e6)%>%
+  mutate(prof_diff=as.factor(m2_prof-m1_prof))%>%
+  ggplot(aes(x=dem,y=R))+
+  geom_line(color="black",size=1.5)+
+  theme_bw()+
+  scale_x_continuous("Demand (million units)",
+                      breaks=c(4e6,5e6,6e6,7e6),
+                     labels=c("4","5","6","7"))+
+  scale_y_continuous("R",
+                     limits=c(0.7,1),
+                     breaks=c(0.7,0.8,0.9,1),
+                     labels=c("0.7","0.8","0.9","1.0"))+
+  theme(text=element_text(size=20))+
+  facet_grid(~prof_diff)+
+  scale_color_discrete("Target profit difference",
+                       labels=c("0M","4M","8M","12M","16M"))
+```
+
+### HepB
+
+Equal (high) capacities of \$7.032M. $P \in [36.9M, 56.65M], P_{int} = 395K, P_{total}=113.3M.$ $D \in [6.4M, 9.24M], D_{int} = 56800$.
+
+## Capacity difference vs. target profit difference
+
+Same intervals as above, and also testing with two different $\gamma$ (0.25, 0.3). We test only positive capacity differences, but test both negative and positive target profit differences. So $P \in [\$26.5M, \$55.5M]$ and $K \in [1.68M, 4.034M]$.
+
+### DTaP
+
+Base $\gamma = 0.25$
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_cap_prof_2 %>%
+  filter(prod_sim==0.25) %>%
+  ggplot(aes(x=m2_cap-m1_cap,y=m1_prof-m2_prof,fill=R)) +
+  geom_raster() +
+  scale_fill_gradient(low="black",high="white",na.value="red",lim=c(0.5,1),
+                      breaks=c(0.5,0.75,1),labels=c("0.5","0.75","1")) +
+  theme_bw() +
+  scale_x_continuous("Capacity difference (million units)",
+                     expand=c(0,0),
+                     breaks=c(0,1e6,2e6,3e6,4e6),
+                     labels=c("0","1","2","3","4")) +
+  scale_y_continuous("Target profit difference (million USD)",
+                     expand=c(0,0),
+                     breaks=c(-2e7,-1e7,0,1e7,2e7),
+                     labels=c("-20","-10","0","10","20")) +
+  theme(text=element_text(size=20)) 
+```
+
+Higher $\gamma = 0.5$
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+d_cap_prof_2 %>%
+  filter(prod_sim==0.5) %>%
+  ggplot(aes(x=m2_cap-m1_cap,y=m1_prof-m2_prof,fill=R)) +
+  geom_raster() +
+  scale_fill_gradient(low="black",high="white",na.value="red",lim=c(0.5,1),
+                      breaks=c(0.5,0.75,1),labels=c("0.5","0.75","1")) +
+  theme_bw() +
+  scale_x_continuous("Capacity difference (million units)",
+                     expand=c(0,0),
+                     breaks=c(0,1e6,2e6,3e6,4e6),
+                     labels=c("0","1","2","3","4")) +
+  scale_y_continuous("Target profit difference (million USD)",
+                     expand=c(0,0),
+                     breaks=c(-2e7,-1e7,0,1e7,2e7),
+                     labels=c("-20","-10","0","10","20")) +
+  theme(text=element_text(size=20))
+```
+
+
+### HepB
+
+$K \in [1.98M, 7.032M], K_{int} = 101040, P \in [36.8M, 113.3-36.8] = [36.8M, 76.4M], P_{int} = 790K, P_{total}=113.3M.$
+
+Base $\gamma = 0.25 $
+
+Higher $\gamma = 0.3$
+
